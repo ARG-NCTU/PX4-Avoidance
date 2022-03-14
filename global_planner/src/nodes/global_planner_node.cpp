@@ -107,6 +107,12 @@ void GlobalPlannerNode::setNewGoal(const GoalCell& goal) {
   ROS_INFO("========== Set goal : %s ==========", goal.asString().c_str());
   global_planner_.setGoal(goal);
   publishGoal(goal);
+  // if(goal.asString().c_str() == "(0,-1,-1)"){
+  //   goal
+  // }else{
+  //   global_planner_.setGoal(goal);
+  //   publishGoal(goal);
+  // }
 }
 
 // Sets the next waypoint to be the current goal
@@ -115,6 +121,7 @@ void GlobalPlannerNode::popNextGoal() {
     // Set the first goal in waypoints_ as the new goal
     GoalCell new_goal = waypoints_.front();
     waypoints_.erase(waypoints_.begin());
+    ROS_INFO("==========popNext==========");
     setNewGoal(new_goal);
   } else if (global_planner_.goal_is_blocked_) {
     // Goal is blocked but there is no other goal in waypoints_, just stop
@@ -147,6 +154,7 @@ void GlobalPlannerNode::planPath() {
 void GlobalPlannerNode::setIntermediateGoal() {
   int curr_path_length = global_planner_.curr_path_.size();
   if (curr_path_length > 10) {
+    ROS_INFO("==========Half-way path==========");
     printf("\n ===== Half-way path ====== \n");
     waypoints_.insert(waypoints_.begin(), global_planner_.goal_pos_);
     Cell middle_cell = global_planner_.curr_path_[curr_path_length / 2];
@@ -240,15 +248,16 @@ void GlobalPlannerNode::positionCallback(const geometry_msgs::PoseStamped& msg) 
 
 void GlobalPlannerNode::clickedPointCallback(const geometry_msgs::PointStamped& msg) {
   printPointInfo(msg.point.x, msg.point.y, msg.point.z);
-
   geometry_msgs::PoseStamped pose;
   pose.header = msg.header;
   pose.pose.position = msg.point;
   pose.pose.position.z = global_planner_.curr_pos_.z;
+  ROS_INFO("========== Enter click point : %f %f ==========", pose.pose.position.x, pose.pose.position.y );
   last_clicked_points.push_back(pose);
 }
 
 void GlobalPlannerNode::moveBaseSimpleCallback(const geometry_msgs::PoseStamped& msg) {
+  ROS_INFO("========== Enter move base : %f %f ==========", msg.pose.position.x, msg.pose.position.y);
   setNewGoal(GoalCell(msg.pose.position.x, msg.pose.position.y, clicked_goal_alt_, clicked_goal_radius_));
 }
 
@@ -256,7 +265,8 @@ void GlobalPlannerNode::fcuInputGoalCallback(const mavros_msgs::Trajectory& msg)
   const GoalCell new_goal = GoalCell(msg.point_2.position.x, msg.point_2.position.y, msg.point_2.position.z, 1.0);
   if (msg.point_valid[1] == true && ((std::fabs(global_planner_.goal_pos_.xPos() - new_goal.xPos()) > 0.001) ||
                                      (std::fabs(global_planner_.goal_pos_.yPos() - new_goal.yPos()) > 0.001))) {
-    setNewGoal(new_goal);
+    //ROS_INFO("==========FCU==========");
+    //setNewGoal(new_goal);
   }
 }
 
