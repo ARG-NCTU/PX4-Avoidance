@@ -51,9 +51,11 @@ void LocalPlanner::dynamicReconfigureSetParams(avoidance::LocalPlannerNodeConfig
 
 void LocalPlanner::setGoal(const Eigen::Vector3f& goal) {
   goal_ = goal;
-
+  ROS_INFO("debug a");
   ROS_INFO("===== Set Goal ======: [%f, %f, %f].", goal_.x(), goal_.y(), goal_.z());
+  ROS_INFO("debug b");
   applyGoal();
+  ROS_INFO("debug c");
 }
 void LocalPlanner::setPreviousGoal(const Eigen::Vector3f& prev_goal) { prev_goal_ = prev_goal; }
 
@@ -67,7 +69,11 @@ void LocalPlanner::setFOV(int i, const FOV& fov) {
 
 Eigen::Vector3f LocalPlanner::getGoal() const { return goal_; }
 
-void LocalPlanner::applyGoal() { star_planner_->setGoal(goal_); }
+void LocalPlanner::applyGoal() { 
+  ROS_INFO("debug d");
+  star_planner_->setGoal(goal_); 
+  ROS_INFO("debug e");
+}
 
 void LocalPlanner::runPlanner() {
   ROS_INFO("\033[1;35m[OA] Planning started, using %i cameras\n \033[0m",

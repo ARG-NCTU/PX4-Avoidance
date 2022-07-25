@@ -47,9 +47,9 @@ LocalPlannerNodelet::~LocalPlannerNodelet() {
 void LocalPlannerNodelet::onInit() {
   NODELET_DEBUG("Initializing nodelet...");
   InitializeNodelet();
-
+  ROS_INFO("start enter");
   startNode();
-
+  ROS_INFO("start exit");
   worker = std::thread(&LocalPlannerNodelet::threadFunction, this);
   worker_tf_listener = std::thread(&LocalPlannerNodelet::transformBufferThread, this);
   // Set up Dynamic Reconfigure Server
@@ -95,14 +95,16 @@ void LocalPlannerNodelet::InitializeNodelet() {
   visualizer_.initializePublishers(nh_);
 
   // pass initial goal into local planner
+  ROS_INFO("init enter");
   local_planner_->applyGoal();
-
+  ROS_INFO("init exit");
   setSystemStatus(MAV_STATE::MAV_STATE_BOOT);
 
   hover_ = false;
   planner_is_healthy_ = true;
   armed_ = false;
   start_time_ = ros::Time::now();
+  ROS_INFO("finish Init and exit");
 }
 
 void LocalPlannerNodelet::startNode() {
@@ -183,8 +185,11 @@ void LocalPlannerNodelet::updatePlannerInfo() {
 
   // update goal
   if (new_goal_) {
+    ROS_INFO("debug 1");
     local_planner_->setGoal(goal_position_);
+    ROS_INFO("debug 2");
     local_planner_->setPreviousGoal(prev_goal_position_);
+    ROS_INFO("debug 3");
     new_goal_ = false;
   }
 
@@ -197,18 +202,23 @@ void LocalPlannerNodelet::updatePlannerInfo() {
 }
 
 void LocalPlannerNodelet::positionCallback(const geometry_msgs::PoseStamped& msg) {
+  ROS_INFO("positionCallback enter");
   last_position_ = newest_position_;
   newest_position_ = toEigen(msg.pose.position);
   newest_orientation_ = toEigen(msg.pose.orientation);
 
   position_received_ = true;
+  ROS_INFO("positionCallback exit");
 }
 
 void LocalPlannerNodelet::velocityCallback(const geometry_msgs::TwistStamped& msg) {
+  ROS_INFO("velocityCallback enter");
   velocity_ = toEigen(msg.twist.linear);
+  ROS_INFO("velocityCallback exit");
 }
 
 void LocalPlannerNodelet::stateCallback(const mavros_msgs::State& msg) {
+  ROS_INFO("stateCallback enter");
   armed_ = msg.armed;
 
   if (msg.mode == "AUTO.MISSION") {
@@ -228,9 +238,11 @@ void LocalPlannerNodelet::stateCallback(const mavros_msgs::State& msg) {
   } else {
     nav_state_ = NavigationState::none;
   }
+  ROS_INFO("stateCallback exit");
 }
 
 void LocalPlannerNodelet::cmdLoopCallback(const ros::TimerEvent& event) {
+  ROS_INFO("cmdLoopCallback enter");
   std::lock_guard<std::mutex> lock(waypoints_mutex_);
   hover_ = false;
 
@@ -272,7 +284,7 @@ void LocalPlannerNodelet::cmdLoopCallback(const ros::TimerEvent& event) {
   }
 
   position_received_ = false;
-
+  ROS_INFO("cmdLoopCallback exit");
   return;
 }
 
@@ -320,23 +332,28 @@ void LocalPlannerNodelet::clickedPointCallback(const geometry_msgs::PointStamped
 }
 
 void LocalPlannerNodelet::clickedGoalCallback(const geometry_msgs::PoseStamped& msg) {
+  ROS_INFO("clickedGoalCallback enter");
   new_goal_ = true;
   prev_goal_position_ = goal_position_;
   goal_position_ = toEigen(msg.pose.position);
   /* Selecting the goal from Rviz sets x and y. Get the z coordinate set in
    * the launch file */
-  goal_position_.z() = local_planner_->getGoal().z();
+  // goal_position_.z() = local_planner_->getGoal().z();
+  ROS_INFO("clickedGoalCallback exit");
 }
 
 void LocalPlannerNodelet::updateGoalCallback(const visualization_msgs::MarkerArray& msg) {
+  ROS_INFO("updateGoalCallback enter");
   if (accept_goal_input_topic_ && msg.markers.size() > 0) {
     prev_goal_position_ = goal_position_;
     goal_position_ = toEigen(msg.markers[0].pose.position);
     new_goal_ = true;
   }
+  ROS_INFO("updateGoalCallback exit");
 }
 
 void LocalPlannerNodelet::fcuInputGoalCallback(const mavros_msgs::Trajectory& msg) {
+  ROS_INFO("fcuInputGoalCallback enter");
   bool update =
       ((avoidance::toEigen(msg.point_2.position) - avoidance::toEigen(goal_mission_item_msg_.pose.position)).norm() >
        0.01) ||
@@ -358,12 +375,15 @@ void LocalPlannerNodelet::fcuInputGoalCallback(const mavros_msgs::Trajectory& ms
     desired_yaw_setpoint_ = msg.point_2.yaw;
     desired_yaw_speed_setpoint_ = msg.point_2.yaw_rate;
   }
+  ROS_INFO("fcuInputGoalCallback exit");
 }
 
 void LocalPlannerNodelet::distanceSensorCallback(const mavros_msgs::Altitude& msg) {
+  ROS_INFO("distanceSensorCallback enter");
   if (!std::isnan(msg.bottom_clearance)) {
     ground_distance_msg_ = msg;
   }
+  ROS_INFO("distanceSensorCallback exit");
 }
 
 void LocalPlannerNodelet::transformBufferThread() {
@@ -404,6 +424,7 @@ void LocalPlannerNodelet::printPointInfo(double x, double y, double z) {
 }
 
 void LocalPlannerNodelet::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg, int index) {
+  ROS_INFO("pointCloudCallback enter");
   std::lock_guard<std::mutex> lck(*(cameras_[index].camera_mutex_));
 
   auto timeSinceLast = [&]() -> ros::Duration {
@@ -430,13 +451,16 @@ void LocalPlannerNodelet::pointCloudCallback(const sensor_msgs::PointCloud2::Con
     buffered_transforms_.push_back(transform_frames);
     cameras_[index].transform_registered_ = true;
   }
+  ROS_INFO("pointCloudCallback exit");
 }
 
 void LocalPlannerNodelet::dynamicReconfigureCallback(avoidance::LocalPlannerNodeConfig& config, uint32_t level) {
+  ROS_INFO("dynamicReconfigureCallback enter");
   std::lock_guard<std::mutex> guard(running_mutex_);
   local_planner_->dynamicReconfigureSetParams(config, level);
   wp_generator_->setSmoothingSpeed(config.smoothing_speed_xy_, config.smoothing_speed_z_);
   rqt_param_config_ = config;
+  ROS_INFO("dynamicReconfigureCallback exit");
 }
 
 void LocalPlannerNodelet::publishLaserScan() const {
